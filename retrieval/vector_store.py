@@ -4,11 +4,7 @@ import uuid
 
 
 def get_chroma_client(persist_dir: str = "chroma_db"):
-    return chromadb.Client(
-        chromadb.config.Settings(
-            persist_directory=persist_dir
-        )
-    )
+    return chromadb.PersistentClient(path=persist_dir)
 
 
 def get_or_create_collection(client, name: str = "repo_chunks"):
@@ -37,7 +33,17 @@ def add_chunks_to_vector_db(chunks: List[Dict]):
     for chunk in chunks:
         ids.append(str(uuid.uuid4()))
 
-        documents.append(chunk["content"])
+        documents.append(
+                        f"""
+                    File: {chunk.get('file_name')}
+                    Path: {chunk.get('file_path')}
+                    Type: {chunk.get('type')}
+                    Name: {chunk.get('name', '')}
+
+                    Code:
+                    {chunk.get('content')}
+                    """
+                    )
 
         embeddings.append(chunk["embedding"])
 

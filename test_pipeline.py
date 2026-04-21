@@ -1,13 +1,21 @@
 from ingestion.repo_loader import clone_repo, load_repository_files
 from ingestion.code_chunker import chunk_repository
 from retrieval.embeddings import embed_chunks
+from retrieval.vector_store import add_chunks_to_vector_db, get_chroma_client, collection_exists
+from retrieval.retriever import query_vector_db
+from retrieval.reranker import rerank_chunks
+from retrieval.rag_pipeline import ask_repo
+from ingestion.code_chunker import chunk_repository, create_repo_structure_chunk
 
-repo_path = clone_repo("https://github.com/psf/requests")
+repo_path = clone_repo("https://github.com/Anmol-0808/Mail-Mind")
 
 files = load_repository_files(repo_path)
 print("Loaded files:", len(files))
 
 chunks = chunk_repository(files)
+
+structure_chunk = create_repo_structure_chunk(files)
+chunks.append(structure_chunk)
 print("Chunks created:", len(chunks))
 
 embedded_chunks = embed_chunks(chunks)
@@ -15,36 +23,47 @@ print("Embeddings created:", len(embedded_chunks))
 
 print("Sample keys:", embedded_chunks[0].keys())
 
-from retrieval.vector_store import add_chunks_to_vector_db
 
-from retrieval.vector_store import get_chroma_client, collection_exists
 
 client = get_chroma_client()
 
 if not collection_exists(client):
-    print("Storing embeddings for the first time...")
+    print("\n📦 Storing embeddings for the first time...")
     add_chunks_to_vector_db(embedded_chunks)
 else:
-    print("Collection already exists, skipping storage.")
-from retrieval.retriever import query_vector_db
+    print("\n⚠️ Collection already exists, skipping storage.")
 
-results = query_vector_db("authentication logic", top_k=5)
 
-def collection_exists(client, name="repo_chunks"):
-    try:
-        client.get_collection(name)
-        return True
-    except:
-        return False
-    
+query = "authentication logic"
+
+print("\n🔎 WITHOUT RERANKING:\n")
+results = query_vector_db(query, top_k=5)
+
 for i, res in enumerate(results):
     print(f"\n--- Result {i+1} ---")
     print("Score:", res["score"])
     print("File:", res["metadata"]["file_name"])
-    print("Content Preview:\n", res["content"][:300])
 
-from retrieval.rag_pipeline import ask_repo
+
+print("\n🔥 WITH RERANKING:\n")
+
+results = query_vector_db(query, top_k=10)
+reranked = rerank_chunks(query, results, top_k=5)
+
+for i, res in enumerate(reranked):
+    print(f"\n--- Result {i+1} ---")
+    print("File:", res["metadata"]["file_name"])
+
+
 
 answer = ask_repo("How authentication works?")
+
 print("\n🧠 AI Answer:\n")
 print(answer)
+
+results = query_vector_db("authentication", top_k=5)
+
+print("\nDEBUG RESULTS:\n")
+for r in results:
+    print(r["metadata"]["file_name"])
+    print(r["content"][:100])

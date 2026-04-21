@@ -84,3 +84,17 @@ def chunk_repository(files: List[Dict]) -> List[Dict]:
         all_chunks.extend(file_chunks)
 
     return all_chunks
+
+def create_repo_structure_chunk(files):
+    structure = "Project Structure:\n"
+
+    for file in files:
+        structure += f"{file['relative_path']}\n"
+
+    return {
+        "type": "structure",
+        "name": "repo_structure",
+        "file_name": "REPO_OVERVIEW",
+        "file_path": "root",
+        "content": structure
+    }
