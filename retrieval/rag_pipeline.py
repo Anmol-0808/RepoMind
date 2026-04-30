@@ -35,14 +35,20 @@ Code:
     return context
 
 
-def ask_repo(query: str):
+def ask_repo(query: str, repo_name: str):
 
- 
-    
-    retrieved_chunks = query_vector_db(query, top_k=25)
-    retrieved_chunks = rerank_chunks(query, retrieved_chunks, top_k=10)
+    retrieved_chunks = query_vector_db(
+        query=query,
+        repo_name=repo_name,
+        top_k=25
+    )
 
- 
+    retrieved_chunks = rerank_chunks(
+        query,
+        retrieved_chunks,
+        top_k=10
+    )
+
     context = format_context(retrieved_chunks)
 
     prompt = f"""

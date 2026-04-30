@@ -4,7 +4,8 @@ print("\n🤖 RepoMind Agent (type 'exit' to quit)\n")
 
 state = {
     "messages": [],
-    "response": ""
+    "response": "",
+    "last_repo_topic": ""
 }
 
 while True:
@@ -16,6 +17,7 @@ while True:
     state["messages"].append(user_input)
 
     result = app.invoke(state)
+    state["last_repo_topic"] = result.get("last_repo_topic", state["last_repo_topic"])
 
     state["messages"].append(result["response"])
 

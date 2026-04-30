@@ -4,14 +4,20 @@ from typing import TypedDict, List
 import os
 from dotenv import load_dotenv
 import re
-from agents.tools import repo_qa_tool
-from agents.tools import repo_qa_tool, repo_improvement_tool
+
+from agents.tools import (
+    repo_qa_tool,
+    repo_improvement_tool,
+    repo_code_fix_tool
+)
+
 load_dotenv()
 
 
 class AgentState(TypedDict):
     messages: List[str]
     response: str
+    last_repo_topic: str
 
 
 def get_llm():
@@ -33,7 +39,6 @@ def agent_node(state: AgentState):
     user_query = state["messages"][-1]
     lower_query = user_query.lower()
 
-
     repo_hint_words = [
         "repo", "project", "code", "file", "api",
         "backend", "frontend", "function", "class",
@@ -42,25 +47,63 @@ def agent_node(state: AgentState):
     ]
 
     improvement_keywords = [
-    "improve", "better", "optimize",
-    "issue", "problem", "scalable",
-    "refactor", "enhance"
-]
+        "improve", "better", "optimize",
+        "issue", "problem", "scalable",
+        "refactor", "enhance"
+    ]
+
+    code_keywords = [
+        "write", "implement", "fix",
+        "refactor", "rewrite",
+        "improve code", "optimize code"
+    ]
+
+    follow_up_words = [
+        "that", "this", "it",
+        "where", "why", "how",
+        "simplify", "explain more",
+        "what about that"
+    ]
+
+    if contains_word(lower_query, ["hi", "hello", "hey"]):
+        return {
+            "messages": state["messages"],
+            "response": "Hey 👋 I’m RepoMind — your AI assistant for this codebase. Ask me anything about your project.",
+            "last_repo_topic": state.get("last_repo_topic", "")
+        }
+
+    if contains_word(lower_query, follow_up_words) and state.get("last_repo_topic"):
+        user_query = f"""
+Previous topic discussed:
+{state["last_repo_topic"]}
+
+Current follow-up question:
+{user_query}
+"""
+
+    if contains_word(lower_query, code_keywords):
+        result = repo_code_fix_tool.invoke(user_query)
+        return {
+            "messages": state["messages"],
+            "response": result,
+            "last_repo_topic": user_query
+        }
 
     if contains_word(lower_query, improvement_keywords):
         result = repo_improvement_tool.invoke(user_query)
         return {
             "messages": state["messages"],
-            "response": result
+            "response": result,
+            "last_repo_topic": user_query
         }
 
     if contains_word(lower_query, repo_hint_words):
         result = repo_qa_tool.invoke(user_query)
         return {
             "messages": state["messages"],
-            "response": result
+            "response": result,
+            "last_repo_topic": user_query
         }
-
 
     decision_prompt = f"""
 You are RepoMind, an AI assistant focused on a code repository.
@@ -88,14 +131,16 @@ Respond with ONE word only.
     if decision == "GREETING":
         return {
             "messages": state["messages"],
-            "response": "Hey! 👋 What part of the repo do you want to explore?"
+            "response": "Hey! 👋 What part of the repo do you want to explore?",
+            "last_repo_topic": state.get("last_repo_topic", "")
         }
 
     elif decision == "REPO_QUESTION":
         result = repo_qa_tool.invoke(user_query)
         return {
             "messages": state["messages"],
-            "response": result
+            "response": result,
+            "last_repo_topic": user_query
         }
 
     else:
@@ -110,7 +155,8 @@ Respond with ONE word only.
 
         return {
             "messages": state["messages"],
-            "response": response
+            "response": response,
+            "last_repo_topic": state.get("last_repo_topic", "")
         }
 
 

@@ -2,15 +2,22 @@ from langchain.tools import tool
 from retrieval.rag_pipeline import ask_repo
 
 
+CURRENT_REPO = "Mail-Mind"
+
+
 @tool
 def repo_qa_tool(query: str) -> str:
-    """Answer questions about the repository"""
-    return ask_repo(query)
+    """
+    Answer questions about the repository
+    """
+    return ask_repo(query, CURRENT_REPO)
 
 
 @tool
 def repo_improvement_tool(query: str) -> str:
-    """Analyze repository and suggest improvements"""
+    """
+    Analyze repository and suggest improvements
+    """
     prompt = f"""
 You are a senior software engineer reviewing a codebase.
 
@@ -24,44 +31,27 @@ Question:
 
 Use the repository knowledge to answer.
 """
-    return ask_repo(prompt)
+
+    return ask_repo(prompt, CURRENT_REPO)
 
 
 @tool
 def repo_code_fix_tool(query: str) -> str:
-    """Suggest code improvements without modifying files"""
-
+    """
+    Suggest code improvements without directly modifying code
+    """
     prompt = f"""
-You are a senior software engineer reviewing a codebase.
+You are a senior software engineer.
 
-Your job:
-- Suggest improvements to existing code
-- Provide better versions of functions if needed
-- Explain WHY the change is better
-
-IMPORTANT:
-- DO NOT assume code is missing unless necessary
-- DO NOT say you are modifying files
-- ONLY suggest changes for the developer to apply manually
-
-FORMAT:
-
-📌 Issue:
-(what is wrong)
-
-💡 Suggestion:
-(what to improve)
-
-💻 Suggested Code:
-(optional improved snippet)
-
-🧠 Reason:
-(why this is better)
-
----
+Your task:
+- Review the existing codebase
+- Suggest better code practices
+- Recommend improvements
+- Do NOT directly write production code
+- Explain what should be changed and why
 
 Question:
 {query}
 """
 
-    return ask_repo(prompt)
+    return ask_repo(prompt, CURRENT_REPO)
