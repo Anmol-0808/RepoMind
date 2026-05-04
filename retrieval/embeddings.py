@@ -46,7 +46,7 @@ def get_embedding(text: str) -> List[float]:
         return model.encode(text).tolist()
 
 
-def embed_chunks(chunks: List[Dict]) -> List[Dict]:
+def embed_chunks(chunks: List[Dict], repo_name: str) -> List[Dict]:
 
     texts = [format_chunk_text(chunk) for chunk in chunks]
 
@@ -67,6 +67,7 @@ def embed_chunks(chunks: List[Dict]) -> List[Dict]:
     for chunk, emb in zip(chunks, embeddings):
         new_chunk = chunk.copy()
         new_chunk["embedding"] = [float(x) for x in emb]
+        new_chunk["repo_name"] = repo_name
         enriched_chunks.append(new_chunk)
 
     return enriched_chunks

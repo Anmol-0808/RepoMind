@@ -16,7 +16,15 @@ def query_vector_db(query: str, repo_name: str, top_k: int = 5) -> List[Dict]:
     client = get_chroma_client()
     collection = get_collection(client, repo_name)
 
-    expanded_query = f"{query} authentication login user token session auth"
+    auth_keywords = [
+    "auth", "authentication", "login",
+    "signup", "token", "jwt", "user", "session"
+]
+
+    if any(word in query.lower() for word in auth_keywords):
+        expanded_query = f"{query} authentication login user token session auth"
+    else:
+        expanded_query = query
     query_embedding = get_embedding(expanded_query)
 
     results = collection.query(

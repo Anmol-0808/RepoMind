@@ -7,41 +7,88 @@ function App() {
   const [messages, setMessages] = useState([])
   const [lastRepoTopic, setLastRepoTopic] = useState("")
 
-  const handleAnalyze = () => {
-    if (!repoUrl.trim()) return
-    console.log("Selected Repo:", repoUrl)
+  const [repoStatus, setRepoStatus] = useState("")
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+
+  const handleAnalyze = async () => {
+    if (!repoUrl.trim()) {
+      setRepoStatus("Please enter a GitHub repository URL.")
+      return
+    }
+
+    try {
+      setIsAnalyzing(true)
+      setRepoStatus("Analyzing repository...")
+
+      const response = await axios.post(
+        "http://127.0.0.1:8000/analyze-repo",
+        {
+          repo_url: repoUrl
+        }
+      )
+
+      setRepoStatus(response.data.message)
+    } catch (error) {
+      console.error(error)
+      setRepoStatus("Failed to analyze repository ❌")
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   const handleSend = async () => {
     if (!message.trim()) return
 
+    const currentMessage = message
+
     const userMessage = {
       role: "user",
-      text: message
+      text: currentMessage
     }
 
     setMessages((prev) => [...prev, userMessage])
+    setMessage("")
+    setIsTyping(true)
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/chat",
-        {
-          message,
-          messages: messages.map((m) => m.text),
-          last_repo_topic: lastRepoTopic
-        }
-      )
+  "http://127.0.0.1:8000/chat",
+  {
+    message: currentMessage,
+    messages: messages.map((m) => m.text),
+    last_repo_topic: lastRepoTopic
+  },
+  {
+    responseType: "text"
+  }
+)
 
-      const aiMessage = {
-        role: "assistant",
-        text: response.data.response
-      }
+const aiMessage = {
+  role: "assistant",
+  text: response.data
+}
 
       setMessages((prev) => [...prev, aiMessage])
       setLastRepoTopic(response.data.last_repo_topic)
-      setMessage("")
     } catch (error) {
       console.error(error)
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "Something went wrong while contacting the backend."
+        }
+      ])
+    } finally {
+      setIsTyping(false)
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSend()
     }
   }
 
@@ -77,9 +124,15 @@ function App() {
               onClick={handleAnalyze}
               className="px-6 py-3 rounded-xl bg-slate-900 text-white font-medium hover:bg-slate-800 transition"
             >
-              Analyze
+              {isAnalyzing ? "Analyzing..." : "Analyze"}
             </button>
           </div>
+
+          {repoStatus && (
+            <p className="mt-4 text-sm text-slate-600">
+              {repoStatus}
+            </p>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-[650px] flex flex-col">
@@ -95,16 +148,22 @@ function App() {
             ) : (
               messages.map((msg, index) => (
                 <div
-                  key={index}
-                  className={`p-4 rounded-xl max-w-[80%] ${
-                    msg.role === "user"
-                      ? "ml-auto bg-slate-900 text-white"
-                      : "bg-white border border-slate-200"
-                  }`}
-                >
-                  {msg.text}
-                </div>
+                    key={index}
+                    className={`p-4 rounded-2xl max-w-[80%] whitespace-pre-wrap break-words leading-relaxed ${
+                      msg.role === "user"
+                        ? "ml-auto bg-slate-900 text-white"
+                        : "bg-white border border-slate-200 shadow-sm"
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
               ))
+            )}
+
+            {isTyping && (
+              <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-2xl max-w-[200px]">
+                RepoMind is typing...
+              </div>
             )}
           </div>
 
@@ -114,6 +173,7 @@ function App() {
               placeholder="Ask something about the repository..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
               className="flex-1 px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-slate-300"
             />
 

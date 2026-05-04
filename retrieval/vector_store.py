@@ -66,4 +66,4 @@ Code:
         metadatas=metadatas
     )
 
-    print(f"Stored {len(ids)} chunks in Chroma DB for repo: {repo_name}")
+    
